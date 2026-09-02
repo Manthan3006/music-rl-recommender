@@ -1,0 +1,285 @@
+{
+  "music_info": {
+    "rows": 50683,
+    "columns": 21,
+    "unique_track_id": 50683,
+    "unique_name": 50683,
+    "unique_artist": 8317,
+    "unique_spotify_id": 50674,
+    "duplicate_spotify_id_pairs": 9,
+    "genre_missing": 28335,
+    "genre_missing_pct": 55.9,
+    "genre_distinct_values": 15,
+    "tags_missing": 1127,
+    "tags_missing_pct": 2.2,
+    "neither_tag_nor_genre": 695,
+    "tags_vocab_size": 100,
+    "tags_vocab_min_count": 127,
+    "tags_per_track_mean": 3.66,
+    "tags_per_track_median": 3.0,
+    "tags_per_track_max": 52,
+    "year_min": 1900,
+    "year_max": 2022,
+    "year_median": 2006.0,
+    "year_1900_rows": 8,
+    "tempo_zero": 10,
+    "time_signature_zero": 10,
+    "tempo_and_timesig_zero_same_rows": 10,
+    "duration_ms_min": 1439,
+    "duration_ms_max": 3816373,
+    "duration_over_10min": 575,
+    "instrumentalness_near_zero_pct": 52.8,
+    "acousticness_near_zero_pct": 38.4,
+    "skew": {
+      "danceability": -0.0,
+      "energy": -0.73,
+      "speechiness": 3.86,
+      "acousticness": 1.32,
+      "instrumentalness": 1.14,
+      "liveness": 2.03,
+      "valence": 0.29,
+      "loudness": -1.7,
+      "tempo": 0.32
+    },
+    "corr_energy_loudness": 0.78,
+    "corr_energy_acousticness": -0.73,
+    "corr_loudness_acousticness": -0.61,
+    "corr_danceability_valence": 0.54
+  },
+  "genre_tag_agreement": {
+    "overall": 0.465,
+    "n_tracks_with_both": 22348,
+    "by_genre": {
+      "New Age": {
+        "agreement": 0.814,
+        "n": 237
+      },
+      "Punk": {
+        "agreement": 0.64,
+        "n": 383
+      },
+      "Country": {
+        "agreement": 0.629,
+        "n": 607
+      },
+      "Folk": {
+        "agreement": 0.611,
+        "n": 355
+      },
+      "Electronic": {
+        "agreement": 0.578,
+        "n": 3710
+      },
+      "Pop": {
+        "agreement": 0.547,
+        "n": 1145
+      },
+      "Blues": {
+        "agreement": 0.54,
+        "n": 189
+      },
+      "Reggae": {
+        "agreement": 0.507,
+        "n": 691
+      },
+      "Rap": {
+        "agreement": 0.481,
+        "n": 821
+      },
+      "Jazz": {
+        "agreement": 0.441,
+        "n": 793
+      },
+      "Rock": {
+        "agreement": 0.437,
+        "n": 9965
+      },
+      "Metal": {
+        "agreement": 0.334,
+        "n": 2516
+      },
+      "RnB": {
+        "agreement": 0.27,
+        "n": 696
+      },
+      "Latin": {
+        "agreement": 0.0,
+        "n": 100
+      },
+      "World": {
+        "agreement": 0.0,
+        "n": 140
+      }
+    }
+  },
+  "duplicate_spotify_id_pairs": {
+    "count": 9,
+    "pairs": [
+      {
+        "spotify_id": "00otCiz9kUb3Vg7LPKNCZG",
+        "track_id": "TRLSRQD128F426CFF8",
+        "artist": "Samuel Barber",
+        "name": "Adagio for Strings, Op. 11"
+      },
+      {
+        "spotify_id": "00otCiz9kUb3Vg7LPKNCZG",
+        "track_id": "TRJNHPN128F92EF139",
+        "artist": "Samuel Barber",
+        "name": "Adagio For Strings"
+      },
+      {
+        "spotify_id": "02VsIBmSkhc7uHNyPViZR3",
+        "track_id": "TRXHJQY128F42B5094",
+        "artist": "2Pac",
+        "name": "How Do U Want It"
+      },
+      {
+        "spotify_id": "02VsIBmSkhc7uHNyPViZR3",
+        "track_id": "TRLOZQZ128F92E8A3F",
+        "artist": "2Pac",
+        "name": "How Do You Want It"
+      },
+      {
+        "spotify_id": "09jsAIZF9ThihIzdrw4KAS",
+        "track_id": "TRGCZFO128F92EE221",
+        "artist": "Amadou & Mariam",
+        "name": "Je pense \u00e0 toi"
+      },
+      {
+        "spotify_id": "09jsAIZF9ThihIzdrw4KAS",
+        "track_id": "TRZBNQU128F148C04F",
+        "artist": "Amadou & Mariam",
+        "name": "Je Pense A Toi"
+      },
+      {
+        "spotify_id": "0ndKJL8gA4zLl317M7vndn",
+        "track_id": "TRDTUTO128F422F138",
+        "artist": "The Specials",
+        "name": "Too Much Too Young (Live)"
+      },
+      {
+        "spotify_id": "0ndKJL8gA4zLl317M7vndn",
+        "track_id": "TRJQFIT128E0781CED",
+        "artist": "The Specials",
+        "name": "Too Much Too Young"
+      },
+      {
+        "spotify_id": "0thdzbW0cRKCx12VbBRB6T",
+        "track_id": "TRXFHCL128F92E0989",
+        "artist": "Radiohead",
+        "name": "There, There"
+      },
+      {
+        "spotify_id": "0thdzbW0cRKCx12VbBRB6T",
+        "track_id": "TRRZUGN128F42A1EEE",
+        "artist": "Radiohead",
+        "name": "There There"
+      },
+      {
+        "spotify_id": "1Ntzk4JoxcAsrWi73MoBjr",
+        "track_id": "TRXUYQW128F42370DB",
+        "artist": "Broken Social Scene",
+        "name": "hHallmark"
+      },
+      {
+        "spotify_id": "1Ntzk4JoxcAsrWi73MoBjr",
+        "track_id": "TRCUHWL128F4249F1A",
+        "artist": "Broken Social Scene",
+        "name": "Hallmark"
+      },
+      {
+        "spotify_id": "22Ty5gK6zbw0hRtGypTuX5",
+        "track_id": "TRHNAWF128F423EAE4",
+        "artist": "The Breeders",
+        "name": "Do You Love Me Now?"
+      },
+      {
+        "spotify_id": "22Ty5gK6zbw0hRtGypTuX5",
+        "track_id": "TRVENST12903D13BBB",
+        "artist": "The Breeders",
+        "name": "Do You Love Me Now"
+      },
+      {
+        "spotify_id": "3MUviQJP5DSYI3Li4EbYTQ",
+        "track_id": "TRRLAHF12903CAFEA1",
+        "artist": "Annie",
+        "name": "Greatest Hit"
+      },
+      {
+        "spotify_id": "3MUviQJP5DSYI3Li4EbYTQ",
+        "track_id": "TRCEFVZ128F4283203",
+        "artist": "Annie",
+        "name": "The Greatest Hit"
+      },
+      {
+        "spotify_id": "5vYA1mW9g2Coh1HUFUSmlb",
+        "track_id": "TRGGALK12903CB68E5",
+        "artist": "Matchbox Twenty",
+        "name": "3 AM"
+      },
+      {
+        "spotify_id": "5vYA1mW9g2Coh1HUFUSmlb",
+        "track_id": "TRLOXMF128F934BF04",
+        "artist": "Matchbox Twenty",
+        "name": "3AM"
+      }
+    ]
+  },
+  "listening_history": {
+    "rows": 9711301,
+    "nulls": 0,
+    "exact_duplicate_rows": 0,
+    "duplicate_user_track_pairs": 0,
+    "unique_users": 962037,
+    "unique_tracks": 30459,
+    "playcount_min": 1,
+    "playcount_max": 2948,
+    "playcount_mean": 2.63,
+    "playcount_median": 1.0,
+    "playcount_eq1_pct": 60.8,
+    "playcount_ge10_pct": 4.2,
+    "playcount_skew": 58.34,
+    "playcount_log1p_skew": 2.06,
+    "density_pct": 0.0331,
+    "interactions_per_user_mean": 10.09,
+    "interactions_per_user_median": 5.0,
+    "users_by_min_interactions": {
+      "5": {
+        "users": 535041,
+        "pct": 55.6
+      },
+      "10": {
+        "users": 290898,
+        "pct": 30.2
+      },
+      "15": {
+        "users": 185418,
+        "pct": 19.3
+      },
+      "20": {
+        "users": 127174,
+        "pct": 13.2
+      },
+      "30": {
+        "users": 66766,
+        "pct": 6.9
+      },
+      "50": {
+        "users": 23795,
+        "pct": 2.5
+      }
+    },
+    "listeners_per_track_mean": 318.8,
+    "listeners_per_track_median": 57.0,
+    "listeners_per_track_max": 80656,
+    "tracks_ge5_listeners": 27049,
+    "tracks_ge100_listeners": 12398
+  },
+  "join_analysis": {
+    "tracks_in_history": 30459,
+    "tracks_in_music_info": 50683,
+    "intersection": 30459,
+    "history_tracks_missing_metadata": 0,
+    "music_info_tracks_zero_listens": 20224
+  }
+}

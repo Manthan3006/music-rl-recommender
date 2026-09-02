@@ -166,8 +166,9 @@ this project genre.
 
 **Replace with:** ALS with confidence weighting (Hu, Koren & Volinsky, 2008) —
 this *is* the "matrix factorization / latent factors / regularization / implicit
-feedback" content from your syllabus, done correctly. Optionally add BPR
-(Rendle et al., 2009) as a pairwise-ranking contrast.
+feedback" content from your syllabus, done correctly. BPR (Rendle et al., 2009)
+as a pairwise-ranking contrast is **deferred** — add it only as an optional
+experiment (Part F) after the core system is complete and evaluated.
 
 Use the `implicit` library. Do not hand-roll ALS.
 
@@ -370,9 +371,10 @@ The diversity and repetition terms are what make this a genuine MDP rather than 
 bandit — they depend on the agent's own history, so a myopic choice at step 3 is
 punished at step 7.
 
-**Report a `w_div` sensitivity sweep** (0.0 / 0.15 / 0.3 / 0.5). This is a cheap
-experiment that produces a real accuracy-vs-diversity trade-off curve, which is
-exactly the "beyond-accuracy evaluation" your RS syllabus asks for.
+The `w_div` sensitivity sweep (0.0 / 0.15 / 0.3 / 0.5) — a cheap experiment that
+produces a real accuracy-vs-diversity trade-off curve, exactly the
+"beyond-accuracy evaluation" your RS syllabus asks for — is **deferred** to
+Part F, run only after the core system is complete and evaluated.
 
 **What you must state as a limitation:** there is no skip data, no dwell time, no
 explicit negatives, and no timestamps. Do not simulate skips. Say so.
@@ -398,10 +400,11 @@ to a reciprocal-rank score `1/(60 + rank)` and sum — this is Reciprocal Rank
 Fusion, it is scale-free, and it is far more robust than min-max blending. Report
 it as your primary hybrid.
 
-Also implement the weighted linear hybrid you proposed (α·CF + β·content +
-γ·popularity, α+β+γ=1) with per-recommender min-max normalisation, and **tune the
-weights by grid search on a validation split, not by hand**. Reporting both
-fusion strategies is a stronger result than reporting one.
+The weighted linear hybrid you proposed (α·CF + β·content + γ·popularity,
+α+β+γ=1) with per-recommender min-max normalisation and weights tuned by grid
+search on a validation split is **deferred** — build it as an optional
+experiment (Part F) once RRF is validated as the core hybrid, not in the first
+implementation.
 
 Expected outcome to check: popularity weight should come out small. The top 10%
 of tracks already hold 47.0% of interactions, so a popularity-heavy hybrid will
@@ -430,14 +433,16 @@ no ratings. You were right to flag this.
 ItemCF-only → ALS-only → Hybrid → Hybrid + Bandit → Hybrid + RL.
 Run ≥5 seeds and report mean ± std. A single-seed RL result is not evidence.
 
-### B.16 Context-aware extension — Option B, with a cheap concession
+### B.16 Context-aware extension — deferred to optional experiments
 
-Keep it out of the core. But there is a 30-line version that ticks the syllabus
-box honestly: derive a **mood quadrant** from `valence` × `energy`
-(happy / energetic / calm / sad) and expose it in the Streamlit UI as a
-**candidate-set filter**. That is textbook *contextual pre-filtering* — name it
-as such in the report. Do not build a contextual modelling approach; do not
-invent time-of-day or activity data you do not have.
+Not part of the first implementation. Once the core system (Popularity,
+Content-based, Item-CF, ALS, Hybrid-RRF, and the RL agents) is complete and
+evaluated, add this as an optional experiment (Part F): derive a **mood
+quadrant** from `valence` × `energy` (happy / energetic / calm / sad) and
+expose it in the Streamlit UI as a **candidate-set filter**. That is textbook
+*contextual pre-filtering* — name it as such in the report. Do not build a
+contextual modelling approach; do not invent time-of-day or activity data you
+do not have.
 
 ---
 
@@ -511,8 +516,8 @@ Reinforcement Learning"*.
                             ▼
         ┌───────────────────────────────────────┐
         │  HYBRID CANDIDATE GENERATOR           │
-        │  Reciprocal Rank Fusion (primary)     │
-        │  + weighted linear (grid-searched)    │
+        │  Reciprocal Rank Fusion (core)        │
+        │  + weighted linear (deferred, Part F) │
         │  → top-100 candidates per user        │
         │  report candidate recall@100          │
         └───────────────────┬───────────────────┘
@@ -551,15 +556,15 @@ Reinforcement Learning"*.
 | Baseline | Popularity (play-count weighted) |
 | Content-based | QuantileTransformed audio (9 feats) + TF-IDF tags (100), cosine |
 | Neighborhood CF | **Item–item only**, cosine on the confidence matrix, top-50 neighbours |
-| Model-based CF | **ALS with confidence weighting** (`implicit`), factors=64, reg=0.05, α=40. BPR optional. |
-| Dropped | User-based CF, SVD, SVD++, NCF, DQN |
-| Hybrid | Reciprocal Rank Fusion (primary) + grid-searched weighted linear (secondary) |
+| Model-based CF | **ALS with confidence weighting** (`implicit`), factors=64, reg=0.05, α=40. BPR — **deferred**, optional experiment (Part F). |
+| Dropped | User-based CF, SVD, SVD++, NCF, DQN (documented only, see Part F) |
+| Hybrid | Reciprocal Rank Fusion (core). Grid-searched weighted linear — **deferred**, optional experiment (Part F). |
 | RL primary | **LinUCB** contextual bandit (song-level) |
 | RL sequential | **Tabular Q-Learning vs SARSA** over 162 states × 10 arms |
 | RL baselines | ε-greedy MAB, UCB1, Random, Greedy |
 | Reward | `w_rel·rel + w_div·div − w_rep·repeat − w_dup·dup` |
 | Evaluation | P/R/F1/NDCG/MAP/HR @10,20 + Coverage/ILD/Novelty/Gini + RL curves |
-| Context | Mood quadrant as candidate pre-filter only (UI-level) |
+| Context | Mood quadrant candidate pre-filter — **deferred**, optional experiment (Part F). |
 
 ---
 
@@ -568,6 +573,13 @@ Reinforcement Learning"*.
 > Everything below can be pasted into Claude Code as the project brief.
 > Work phase by phase. Do not start a phase until the previous phase's
 > acceptance criteria pass.
+
+**First-implementation scope (Phases 0–9):** Popularity, Content-Based,
+Item-Based CF, Implicit ALS, Hybrid-RRF, and the RL agents Random, Greedy,
+ε-greedy MAB, UCB1, LinUCB, Q-Learning, SARSA. BPR, DQN, the weighted-linear
+hybrid with grid-searched α/β/γ, the context-aware mood extension, and the
+`w_div` sensitivity sweep are **deferred** to Part F and are only attempted
+after the core system above is complete and evaluated.
 
 ## Global conventions
 
@@ -717,17 +729,18 @@ NDCG@20. Item-CF beats Content on Recall@20 (if not, the CF is broken).
 **Goal.** Top-100 candidates per user that the RL layer can work with.
 
 **Tasks.**
-1. Implement Reciprocal Rank Fusion, `score = Σ_m 1/(60 + rank_m)`.
-2. Implement weighted linear hybrid with per-model min-max normalisation; grid
-   search α, β, γ over a 0.1 simplex on a validation split.
-3. Pool: 50 ItemCF + 30 ALS + 15 Content + 5 Popularity → dedupe → re-rank → top-100.
-4. **Measure and report candidate recall@100.** If < 0.40, raise N to 200 and
+1. Implement Reciprocal Rank Fusion, `score = Σ_m 1/(60 + rank_m)` — the sole
+   hybrid strategy for the core system.
+2. Pool: 50 ItemCF + 30 ALS + 15 Content + 5 Popularity → dedupe → re-rank → top-100.
+3. **Measure and report candidate recall@100.** If < 0.40, raise N to 200 and
    document the change.
+
+*(The weighted linear hybrid with grid-searched α/β/γ is deferred — see
+Part F. Do not implement it in this phase.)*
 
 **Output.** `data/processed/candidates.parquet` (user_idx, item_idx, hybrid_score, rank).
 
-**Acceptance.** Candidate recall@100 ≥ 0.40. Hybrid NDCG@20 ≥ best single model.
-Both fusion strategies reported side by side.
+**Acceptance.** Candidate recall@100 ≥ 0.40. Hybrid (RRF) NDCG@20 ≥ best single model.
 
 **Dependencies.** Phase 3.
 
@@ -763,9 +776,16 @@ a stable mean reward with sane variance. The reward decomposition
 
 ### PHASE 6 — RL agents
 
-**Goal.** Six agents on one interface, trained and compared.
+**Goal.** Seven agents, all subclasses of one `BaseAgent` interface, trained
+and compared.
 
 **Tasks.**
+0. Define `BaseAgent` (abstract base class) with exactly two required methods:
+   `select_action(state) -> arm` and `update(state, action, reward, next_state,
+   done)`. The environment and training loop (Phase 5, `train.py`) must depend
+   only on this interface, never on a concrete agent's internals — this is
+   what lets the deferred agents (Part F) be added later without touching
+   either.
 1. `RandomAgent`, `GreedyAgent` (always highest hybrid score — the ablation that
    shows whether RL adds anything at all).
 2. `EpsilonGreedyMAB`, `UCB1` — arm-level, no state.
@@ -777,12 +797,14 @@ a stable mean reward with sane variance. The reward decomposition
 
 **Output.** `models/rl/*.pkl`, `results/rl_curves.csv`.
 
-**Acceptance.** Q-Learning and SARSA both converge (rolling-mean reward plateaus).
-Q-Learning and SARSA produce *different* policies — if the learned Q-tables are
-identical, the on/off-policy distinction is not being implemented correctly.
-All learned agents beat Random. Report whether they beat Greedy — **if they do
-not, that is a legitimate finding**, and the honest analysis of *why* (sparse
-reward, short horizon, strong hybrid prior) is worth more than a fabricated win.
+**Acceptance.** Every agent is a subclass of `BaseAgent` and is driven only
+through `select_action`/`update`. Q-Learning and SARSA both converge
+(rolling-mean reward plateaus). Q-Learning and SARSA produce *different*
+policies — if the learned Q-tables are identical, the on/off-policy
+distinction is not being implemented correctly. All learned agents beat
+Random. Report whether they beat Greedy — **if they do not, that is a
+legitimate finding**, and the honest analysis of *why* (sparse reward, short
+horizon, strong hybrid prior) is worth more than a fabricated win.
 
 **Dependencies.** Phase 5.
 
@@ -798,10 +820,13 @@ reward, short horizon, strong hybrid prior) is worth more than a fabricated win.
    Artist Entropy, Gini.
 3. Evaluate all 8 configurations (Random, Popularity, Content, ItemCF, ALS,
    Hybrid, Hybrid+LinUCB, Hybrid+QL) at K=10 and K=20, 5 seeds, mean ± std.
-4. `w_div` sensitivity sweep: {0.0, 0.15, 0.3, 0.5} → accuracy-vs-diversity curve.
-5. Ablation: with/without the genre block; grounded-only vs grounded+simulated reward.
-6. Figures: model comparison bars with error bars, RL learning curves with 95%
-   CI, accuracy-diversity trade-off scatter, coverage vs novelty.
+4. Ablation: with/without the genre block; grounded-only vs grounded+simulated reward.
+5. Figures: model comparison bars with error bars, RL learning curves with 95%
+   CI, coverage vs novelty.
+
+*(The `w_div` sensitivity sweep and its accuracy-vs-diversity trade-off curve
+are deferred — see Part F. Run them only after this phase's core evaluation
+is complete.)*
 
 **Output.** `results/final_comparison.csv`, `results/figures/`.
 
@@ -818,13 +843,15 @@ standard deviation. Every claim in the report traces to a row in the CSV.
 
 **Tasks.**
 1. Inputs: user selector (searchable), playlist length slider (5–20), agent
-   selector, optional mood filter (valence×energy quadrant — contextual
-   pre-filtering).
+   selector.
 2. Output: numbered playlist with track, artist, genre/tags, year, plus a
    Spotify preview `st.audio` where `spotify_preview_url` exists.
 3. Side panel: the user's top-10 training tracks (so a viewer can judge whether
    the recommendations make sense), and the playlist's diversity/novelty scores.
 4. Pre-compute and cache candidates; `@st.cache_resource` for models.
+
+*(The mood-quadrant candidate filter — B.16 — is deferred; add it as an
+optional experiment, Part F, once the core UI works.)*
 
 **Acceptance.** Cold start < 10 s, per-playlist < 3 s. No model training at
 request time. Runs from a clean checkout with one command.
@@ -850,6 +877,36 @@ request time. Runs from a clean checkout with one command.
 - The justification for ALS-with-confidence over SVD++ (B.2).
 - The two-level action-space design and why a flat 100-song tabular action space
   would have been invalid (B.7).
+
+---
+
+# PART F — DEFERRED / OPTIONAL EXPERIMENTS (post-core only)
+
+Do not start any of these until the core system — Phases 0–9, covering
+Popularity, Content-Based, Item-Based CF, Implicit ALS, Hybrid-RRF, and the
+RL agents Random, Greedy, ε-greedy MAB, UCB1, LinUCB, Q-Learning, SARSA — is
+complete and evaluated (Phase 7's comparison table exists and is reported).
+These are optional, additive experiments, not blockers for the core
+deliverable or the viva.
+
+1. **BPR** (Rendle et al., 2009) — pairwise-ranking contrast to ALS (B.2).
+   Fit alongside the existing ALS model; report BPR vs ALS on the Phase 7
+   metrics.
+2. **Weighted linear hybrid** (α·CF + β·content + γ·popularity, α+β+γ=1),
+   per-recommender min-max normalisation, weights tuned by grid search on the
+   validation split (B.14). Report side by side with the core RRF hybrid.
+3. **Context-aware mood extension** (B.16) — mood quadrant from
+   valence×energy as a Streamlit candidate-set pre-filter.
+4. **`w_div` sensitivity sweep** — {0.0, 0.15, 0.3, 0.5} → accuracy-vs-diversity
+   trade-off curve (B.12).
+5. **DQN — documented only, never implemented.** B.6 explains why tabular RL
+   is the right choice here; the project's hard constraint (no deep learning)
+   means DQN stays declared future work for the report's limitations
+   section, not something to build even as an optional experiment.
+
+Because every core agent (Phase 6) subclasses `BaseAgent`, adding new bandit
+or RL variants later requires only a new subclass — the environment and
+training loop do not change.
 
 ---
 
