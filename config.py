@@ -17,8 +17,13 @@ MUSIC_INFO_ENCODING = "utf-8-sig"  # Music_Info.csv has a UTF-8 BOM
 
 # k-core filtering thresholds (Part B.4 of docs/SPEC.md)
 MIN_USER_INTERACTIONS = 20
-MIN_TRACK_LISTENERS = 50
+MIN_TRACK_LISTENERS = 50  # population-scale threshold, used pre-subsample
 SUBSAMPLE_USERS = 40_000
+# Post-subsample re-filter threshold. NOT the same as MIN_TRACK_LISTENERS:
+# re-applying the population-scale >=50 threshold to a 40,000-user subsample
+# is disproportionately strict and cascades through the iterative k-core,
+# costing ~49% of the catalogue. See docs/SPEC.md Phase 1, task 5.
+POST_SUBSAMPLE_MIN_TRACK_LISTENERS = 17
 
 # Playcount -> preference/confidence (Part B.11)
 ALS_ALPHA = 40

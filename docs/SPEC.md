@@ -208,6 +208,13 @@ Then **subsample to 30,000–50,000 users** for RL experiments. The full 118k co
 is fine for training CF/ALS, but RL episodes over 118k users is wasted compute.
 Fix and report the random seed.
 
+**Important:** the `≥50` track threshold above is tuned against the full
+118,153-user population. Do not re-apply it verbatim after subsampling to
+40,000 users — it is disproportionately strict against a population with
+roughly 1/3 the listeners per track, and iterative k-core cascades that into
+losing ~49% of the catalogue. Phase 1 instead re-derives the post-subsample
+threshold (`≥17`) empirically; see Phase 1, task 5.
+
 ### B.5 `genre` cannot be a primary content feature
 
 55.9% missing, only 46.5% agreement with the track's own tags, and 0% agreement
@@ -656,7 +663,21 @@ Part A. If any number differs, stop and investigate before proceeding.
 3. Set `year == 1900` → null; add `decade` bucket.
 4. Iterative k-core: repeat {drop tracks with <50 listeners; drop users with <20
    tracks} until fixed point. Expect ≈ 4.45M rows / 118,153 users / 12,193 tracks.
-5. Seeded random subsample to 40,000 users; re-apply the track≥50 filter once.
+5. Seeded random subsample to 40,000 users, then **re-run the full iterative
+   k-core to convergence** (user≥20, track≥17 — not a single re-application of
+   the population-scale ≥50 threshold). Expect **39,825 users / 11,613 tracks /
+   1,489,288 interactions / 0.322% density / 2,760 distinct artists**.
+
+   **Why ≥17, not ≥50, post-subsample:** ≥50 was tuned against the full
+   118,153-user population (B.4). Re-applying it to a 40,000-user subsample is
+   disproportionately strict — the subsample already has ~1/3 the listeners
+   per track, so a fixed absolute threshold cascades through the iterative
+   filter and costs ~49% of the catalogue (6,107 of 11,944 tracks), leaving a
+   denser but much smaller, less diverse core (1,544 artists). ≥17 rescales
+   the threshold to the subsampled population instead of the full one; it
+   removes only ~3% of tracks and keeps artist diversity (2,760) and coverage
+   intact while still enforcing the same k-core invariant (user≥20 track≥17)
+   to convergence.
 6. Compute `p_ui`, `c_ui` (α=40), `aff_ui` per B.11.
 7. Build integer index maps `user_idx`, `item_idx`; save as Parquet.
 8. Leave-5-out split per user → `train.parquet`, `holdout.parquet`.
