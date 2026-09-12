@@ -38,6 +38,12 @@ W_REL = 1.0
 W_DIV = 0.3
 W_REP = 0.5
 W_DUP = 1.0
+SIMULATED_REL_LAMBDA = 0.3  # Tier 2 backoff weight (B.12)
+
+# RL environment (Phase 5 / B.7)
+PLAYLIST_LENGTH = 15
+ARTIST_CAP = 2
+N_ARMS = 10
 
 # Candidate generation (Part B.13)
 CANDIDATE_POOL_SIZE = 100

@@ -1,0 +1,126 @@
+"""Phase 5 acceptance unit tests for src/rl/environment.py (docs/SPEC.md
+Phase 5 task 6): reward determinism given (user, action sequence, seed);
+the artist cap is never violated; no duplicate track ever enters a
+playlist. Uses the real Phase 3/4 artifacts on disk (core content matrix,
+candidates.parquet, holdout.parquet) rather than synthetic fixtures.
+"""
+
+import sys
+from collections import Counter
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from config import DATA_PROCESSED
+from src.recommenders.common import load_core_content_matrix
+from src.rl.environment import GROUNDED, GROUNDED_SIMULATED, EnvConfig, PlaylistEnv, _load_item_metadata
+
+
+@pytest.fixture(scope="module")
+def content_matrix():
+    return load_core_content_matrix()
+
+
+@pytest.fixture(scope="module")
+def candidates_df():
+    return pd.read_parquet(DATA_PROCESSED / "candidates.parquet")
+
+
+@pytest.fixture(scope="module")
+def holdout_df():
+    return pd.read_parquet(DATA_PROCESSED / "holdout.parquet")
+
+
+def _user_candidates(candidates_df, user_idx):
+    return candidates_df[candidates_df["user_idx"] == user_idx][["item_idx", "hybrid_score"]]
+
+
+def _user_holdout(holdout_df, user_idx):
+    rows = holdout_df[holdout_df["user_idx"] == user_idx]
+    return dict(zip(rows["item_idx"], rows["aff_ui"]))
+
+
+def _sample_user(candidates_df, holdout_df, n=1, seed=0):
+    users = np.intersect1d(candidates_df["user_idx"].unique(), holdout_df["user_idx"].unique())
+    rng = np.random.default_rng(seed)
+    return rng.choice(users, size=n, replace=False)
+
+
+def _make_env(content_matrix, candidates_df, holdout_df, user_idx, config=None):
+    cand = _user_candidates(candidates_df, user_idx)
+    holdout = _user_holdout(holdout_df, user_idx)
+    return PlaylistEnv(int(user_idx), cand, content_matrix, holdout, config)
+
+
+def _run_random_episode(env, rng):
+    """Runs one episode with a uniform-random arm policy, returns the reward
+    sequence and the final playlist."""
+    rewards = []
+    done = False
+    env.reset()
+    while not done:
+        arm = int(rng.integers(0, env.config.n_arms))
+        _, reward, done, info = env.step(arm)
+        if info.get("pool_exhausted"):
+            break
+        rewards.append(reward)
+    return rewards, list(env.playlist)
+
+
+@pytest.mark.parametrize("reward_mode", [GROUNDED, GROUNDED_SIMULATED])
+def test_reward_deterministic_given_seed(content_matrix, candidates_df, holdout_df, reward_mode):
+    user_idx = int(_sample_user(candidates_df, holdout_df, seed=1)[0])
+    action_sequence = [0, 3, 7, 2, 5, 1, 9, 4, 6, 8, 0, 2, 5, 7, 1]
+
+    config = EnvConfig(reward_mode=reward_mode, seed=42)
+    env_a = _make_env(content_matrix, candidates_df, holdout_df, user_idx, config)
+    env_b = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(reward_mode=reward_mode, seed=42))
+
+    rewards_a, playlist_a = [], []
+    for arm in action_sequence:
+        _, r, done, info = env_a.step(arm)
+        if info.get("pool_exhausted"):
+            break
+        rewards_a.append(r)
+        if done:
+            break
+    playlist_a = list(env_a.playlist)
+
+    rewards_b, playlist_b = [], []
+    for arm in action_sequence:
+        _, r, done, info = env_b.step(arm)
+        if info.get("pool_exhausted"):
+            break
+        rewards_b.append(r)
+        if done:
+            break
+    playlist_b = list(env_b.playlist)
+
+    assert rewards_a == rewards_b
+    assert playlist_a == playlist_b
+
+
+def test_artist_cap_never_violated(content_matrix, candidates_df, holdout_df):
+    users = _sample_user(candidates_df, holdout_df, n=20, seed=2)
+    rng = np.random.default_rng(123)
+    for user_idx in users:
+        env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig(seed=42))
+        _, playlist = _run_random_episode(env, rng)
+        meta = _load_item_metadata()
+        artists = meta["artist"].to_numpy()[playlist]
+        counts = Counter(artists)
+        assert all(c <= env.config.artist_cap for c in counts.values()), \
+            f"artist cap {env.config.artist_cap} violated for user {user_idx}: {counts}"
+
+
+def test_no_duplicate_tracks(content_matrix, candidates_df, holdout_df):
+    users = _sample_user(candidates_df, holdout_df, n=20, seed=3)
+    rng = np.random.default_rng(456)
+    for user_idx in users:
+        env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig(seed=42))
+        _, playlist = _run_random_episode(env, rng)
+        assert len(playlist) == len(set(playlist)), f"duplicate track for user {user_idx}: {playlist}"
