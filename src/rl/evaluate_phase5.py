@@ -6,8 +6,16 @@ Tier 1+2 grounded+simulated — task 5), and reports per-episode total reward
 mean/std plus the mean per-step reward decomposition (rel/div/repeat/dup) so
 it's clear which term dominates (task 6 / acceptance).
 
-pytest unit tests (reward determinism, artist cap, no duplicates) live in
-tests/test_env.py and are run separately (`python -m pytest tests/test_env.py`).
+The artist cap is a soft penalty, not a hard filter (see environment.py's
+module docstring), so a uniform-random policy is expected to trigger some
+non-zero rate of cap violations (repeat=1 steps) — this run reports that
+rate directly (mean_repeat = fraction of steps that violate the cap;
+pct_episodes_with_violation = fraction of the 1,000 episodes with >=1
+violation), rather than the structural zero a hard filter would force.
+
+pytest unit tests (reward determinism, cap-violation penalty, no
+duplicates) live in tests/test_env.py and are run separately
+(`python -m pytest tests/test_env.py`).
 """
 
 import sys
@@ -73,6 +81,8 @@ def run_baseline(content_matrix, candidates_df, holdout_df, users, reward_mode):
             content_matrix, candidates_df, holdout_df, user_idx, reward_mode, seed=SEED + i
         )
         episode_rewards.append(total_reward)
+        for d in reward_log:
+            d["episode"] = i
         decomposition_rows.extend(reward_log)
         if (i + 1) % 200 == 0:
             log(f"  [{reward_mode}] {i + 1}/{len(users)} episodes")
@@ -101,9 +111,13 @@ def main():
             .to_csv(OUT_DIR / f"random_policy_episode_rewards_{reward_mode}.csv", index=False)
 
         mean_decomp = decomposition[["rel", "div", "repeat", "dup", "reward"]].mean()
+        pct_episodes_with_violation = float(decomposition.groupby("episode")["repeat"].max().mean())
         log(f"  {reward_mode}: mean per-step decomposition -> "
             f"rel={mean_decomp['rel']:.4f} div={mean_decomp['div']:.4f} "
             f"repeat={mean_decomp['repeat']:.4f} dup={mean_decomp['dup']:.4f}")
+        log(f"  {reward_mode}: artist-cap violation rate -> "
+            f"{mean_decomp['repeat']:.4f} of steps, "
+            f"{pct_episodes_with_violation:.4f} of episodes have >=1 violation")
         decomposition.to_csv(OUT_DIR / f"random_policy_step_decomposition_{reward_mode}.csv", index=False)
 
         summary_rows.append({
@@ -111,6 +125,7 @@ def main():
             "mean_total_reward": mean_r, "std_total_reward": std_r,
             "mean_rel": mean_decomp["rel"], "mean_div": mean_decomp["div"],
             "mean_repeat": mean_decomp["repeat"], "mean_dup": mean_decomp["dup"],
+            "pct_episodes_with_cap_violation": pct_episodes_with_violation,
         })
 
     summary = pd.DataFrame(summary_rows)

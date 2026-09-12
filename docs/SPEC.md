@@ -262,7 +262,10 @@ every user and every step — a tabular Q-table over that is meaningless, becaus
   tag vector, refit per candidate set, or use fixed global clusters). The action
   is "draw the next track from bucket k". |A| = K.
 - **Level 2 (deterministic):** within the chosen bucket, take the
-  highest-hybrid-score track not yet used and not violating the artist cap.
+  highest-hybrid-score track not yet used. The artist cap is enforced as a
+  reward penalty (B.12's `w_rep` term), not as a selection filter here — see
+  Phase 5 for why it must stay a cost the agent can choose to pay rather
+  than a wall it cannot reach.
 
 State (discretised, transferable across users):
 
@@ -803,22 +806,41 @@ exists to make tractable. An NDCG bar on the pool itself was the wrong gate.
 **Tasks.**
 1. `PlaylistEnv(user_idx, candidates, content_matrix, holdout, config)`.
 2. `reset()` → initial state tuple (see B.7 discretisation) + empty playlist.
-3. `step(arm_k)` → pick best unused candidate in cluster k respecting the artist
-   cap → compute reward (B.12) → update state → return `(s', r, done, info)`.
-   `done` when `len(playlist) == playlist_length` (default 15).
+3. `step(arm_k)` → pick best unused candidate in cluster k → compute reward
+   (B.12) → update state → return `(s', r, done, info)`. `done` when
+   `len(playlist) == playlist_length` (default 15). **The artist cap is a
+   soft constraint, not a hard filter on candidate selection**: a candidate
+   that would exceed it stays selectable and is charged the `w_rep` penalty
+   instead of being removed from consideration. Only the no-duplicate
+   constraint is a hard filter — a playlist containing the same track twice
+   is a bug, not a trade-off.
+
+   *Why soft, not hard (revised after Phase 5 was first built with a hard
+   cap):* the repetition penalty is the primary source of sequential credit
+   assignment in this MDP — the cost of repeating an artist is paid at the
+   step it happens, but the benefit of having deferred it only shows up in
+   later steps' diversity/relevance terms. If repetition is structurally
+   impossible, the agent has nothing to learn to defer, and the argument for
+   tabular RL over a stateless contextual bandit (which just maximises
+   immediate reward and would behave identically under a hard cap) weakens
+   to nothing. The penalty must be a cost the agent can choose to pay.
 4. Cluster the candidate set into K=10 arms with KMeans on `content_matrix`
    rows, seeded.
 5. Expose both a **grounded-only** reward mode (Tier 1) and a
    **grounded+simulated** mode (Tier 1 + Tier 2) via a config flag. Run both;
    report both.
 6. Unit-test: reward is deterministic given (user, action sequence, seed);
-   artist cap is never violated; no duplicate track ever enters a playlist.
+   artist cap violations incur `w_rep` and are reported in the reward
+   decomposition; no duplicate track ever enters a playlist.
 
 **Output.** `src/rl/environment.py` + `tests/test_env.py`.
 
 **Acceptance.** All unit tests pass. A random policy over 1,000 episodes produces
 a stable mean reward with sane variance. The reward decomposition
-(rel / div / repeat) is logged per step so you can debug which term dominates.
+(rel / div / repeat) is logged per step so you can debug which term dominates
+— under a random policy, expect to see some non-zero rate of artist-cap
+violations (report it), since nothing prevents a uniform-random arm choice
+from repeating an artist.
 
 **Dependencies.** Phase 4.
 

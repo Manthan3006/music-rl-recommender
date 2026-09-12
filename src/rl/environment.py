@@ -4,10 +4,24 @@
 user's Phase 4 candidate pool. It implements the two-level action space from
 B.7: the agent picks an **arm** (a KMeans cluster over the candidate pool's
 content vectors, |A|=N_ARMS), and the environment deterministically resolves
-that arm to the highest-hybrid-score unused candidate in it that does not
-violate the artist cap (B.7 level 2). Reward is B.12's grounded (Tier 1) or
-grounded+simulated (Tier 1 + Tier 2) formula, selected via
-`EnvConfig.reward_mode`.
+that arm to the highest-hybrid-score unused candidate in it (B.7 level 2).
+Reward is B.12's grounded (Tier 1) or grounded+simulated (Tier 1 + Tier 2)
+formula, selected via `EnvConfig.reward_mode`.
+
+Only the no-duplicate constraint is a hard filter on candidate selection — a
+playlist containing the same track twice is a bug, not a trade-off. The
+artist cap is a **soft** constraint: a candidate that would exceed it stays
+selectable and is charged the `w_rep` penalty in the reward instead of being
+removed from consideration. This is deliberate, not an oversight: the
+repetition penalty is the primary source of sequential credit assignment in
+this MDP — the cost of repeating an artist at step t is paid at step t, but
+the benefit of having deferred it only shows up in the diversity/relevance
+terms of later steps. If repetition were structurally impossible (as an
+earlier version of this environment did, by hard-filtering it), the agent
+would have nothing to learn to defer, and the whole argument for using RL
+here over a stateless contextual bandit (which just maximises immediate
+reward) would weaken to nothing. So the penalty must be a cost the agent can
+choose to pay, not a wall it cannot reach. See docs/SPEC.md Phase 5.
 
 State (B.7, |S|=162): a 5-tuple of small discretised buckets, chosen so a
 tabular Q-table is meaningful across users and candidate pools — nothing in
@@ -169,15 +183,16 @@ class PlaylistEnv:
         return (energy_bucket, valence_bucket, diversity_level, near_cap, position_bucket)
 
     def _select_candidate(self, arm_k: int):
-        """Best unused candidate in cluster arm_k not violating the artist
-        cap; falls back to the best unused, cap-respecting candidate in any
-        cluster if arm_k is exhausted, so an episode never deadlocks while
-        valid candidates remain elsewhere in the pool."""
+        """Best unused candidate in cluster arm_k; falls back to the best
+        unused candidate in any cluster if arm_k is exhausted, so an episode
+        never deadlocks while unused candidates remain elsewhere in the pool.
+
+        The artist cap is NOT enforced here — a candidate that would exceed
+        it stays selectable and is charged the w_rep penalty in step()
+        instead. Only "already used" (duplicate) is a hard filter; the
+        artist cap is a cost the agent can choose to pay."""
         def is_valid(pos):
-            if pos in self.used_positions:
-                return False
-            artist = self.candidate_artists[pos]
-            return self.artist_counts[artist] < self.config.artist_cap
+            return pos not in self.used_positions
 
         for pos in self.arms.get(arm_k, []):
             if is_valid(pos):

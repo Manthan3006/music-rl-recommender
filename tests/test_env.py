@@ -1,12 +1,14 @@
 """Phase 5 acceptance unit tests for src/rl/environment.py (docs/SPEC.md
 Phase 5 task 6): reward determinism given (user, action sequence, seed);
-the artist cap is never violated; no duplicate track ever enters a
-playlist. Uses the real Phase 3/4 artifacts on disk (core content matrix,
-candidates.parquet, holdout.parquet) rather than synthetic fixtures.
+artist cap violations incur w_rep and are reported in the reward
+decomposition (the cap is a soft penalty, not a hard filter — see
+environment.py's module docstring); no duplicate track ever enters a
+playlist (that one IS a hard filter). Uses the real Phase 3/4 artifacts on
+disk (core content matrix, candidates.parquet, holdout.parquet) rather than
+synthetic fixtures.
 """
 
 import sys
-from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -104,17 +106,41 @@ def test_reward_deterministic_given_seed(content_matrix, candidates_df, holdout_
     assert playlist_a == playlist_b
 
 
-def test_artist_cap_never_violated(content_matrix, candidates_df, holdout_df):
-    users = _sample_user(candidates_df, holdout_df, n=20, seed=2)
-    rng = np.random.default_rng(123)
-    for user_idx in users:
-        env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig(seed=42))
-        _, playlist = _run_random_episode(env, rng)
-        meta = _load_item_metadata()
-        artists = meta["artist"].to_numpy()[playlist]
-        counts = Counter(artists)
-        assert all(c <= env.config.artist_cap for c in counts.values()), \
-            f"artist cap {env.config.artist_cap} violated for user {user_idx}: {counts}"
+def test_artist_cap_violation_incurs_penalty():
+    """The artist cap is a soft constraint (see environment.py's module
+    docstring): a candidate that would exceed it stays selectable, but its
+    selection must incur the w_rep penalty and show up as repeat=1 in the
+    reward decomposition. Constructs a controlled 3-item, single-artist,
+    single-arm pool (real content vectors, real artist metadata) so the
+    3rd pick of the same artist deterministically exceeds artist_cap=2."""
+    content_matrix = load_core_content_matrix()
+    meta = _load_item_metadata()
+    counts = meta["artist"].value_counts()
+    artist = counts[counts >= 3].index[0]
+    item_idxs = meta.index[meta["artist"] == artist][:3].tolist()
+
+    candidates = pd.DataFrame({"item_idx": item_idxs, "hybrid_score": [3.0, 2.0, 1.0]})
+    config = EnvConfig(n_arms=1, playlist_length=3, artist_cap=2, reward_mode=GROUNDED, seed=42)
+    env = PlaylistEnv(user_idx=0, candidates=candidates, content_matrix=content_matrix, holdout={}, config=config)
+
+    decompositions = []
+    done = False
+    while not done:
+        _, reward, done, info = env.step(0)
+        decompositions.append(info)
+
+    assert len(env.playlist) == 3
+    assert len(set(env.playlist)) == 3  # the hard duplicate filter still holds
+
+    repeats = [d["repeat"] for d in decompositions]
+    assert repeats == [0, 0, 1], f"expected the artist cap (2) to be exceeded on the 3rd pick, got {repeats}"
+
+    third = decompositions[2]
+    expected_reward = (config.w_rel * third["rel"] + config.w_div * third["div"]
+                        - config.w_rep * third["repeat"] - config.w_dup * third["dup"])
+    assert third["reward"] == pytest.approx(expected_reward)
+    assert third["reward"] < config.w_rel * third["rel"] + config.w_div * third["div"], \
+        "w_rep penalty was not actually applied to the reward"
 
 
 def test_no_duplicate_tracks(content_matrix, candidates_df, holdout_df):
