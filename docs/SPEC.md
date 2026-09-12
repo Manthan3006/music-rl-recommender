@@ -944,9 +944,10 @@ request time. Runs from a clean checkout with one command.
   but still trailed on NDCG@20 (0.3168 vs 0.3345) — see the acceptance
   criterion change above. Candidate coverage was never the issue; ranking
   quality was. Attribute this to the aggressive k-core filtering
-  (Phase 1): the resulting train interaction matrix is dense enough
-  (0.279% of the user×item grid has an interaction, vs a typical <0.01% for
-  unfiltered implicit-feedback catalogues) that item co-occurrence alone
+  (Phase 1): the resulting core interaction matrix is dense enough
+  (0.322% of the user×item grid has an interaction — Phase 1's own
+  reproduced stat — vs a typical <0.01% for unfiltered implicit-feedback
+  catalogues) that item co-occurrence alone
   captures most of the recoverable signal, leaving little room for
   ALS/Content/Popularity to add. State plainly that this is a property of
   the filtered 39,825-user/11,613-item subset used here, not a general
