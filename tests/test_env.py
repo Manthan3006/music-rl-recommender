@@ -110,9 +110,11 @@ def test_artist_cap_violation_incurs_penalty():
     """The artist cap is a soft constraint (see environment.py's module
     docstring): a candidate that would exceed it stays selectable, but its
     selection must incur the w_rep penalty and show up as repeat=1 in the
-    reward decomposition. Constructs a controlled 3-item, single-artist,
-    single-arm pool (real content vectors, real artist metadata) so the
-    3rd pick of the same artist deterministically exceeds artist_cap=2."""
+    reward decomposition. Constructs a controlled 3-item, single-artist pool
+    (real content vectors, real artist metadata) and drives it with
+    step_song() (direct position control, bypassing arm-cluster resolution
+    entirely) so the 3rd pick of the same artist deterministically exceeds
+    artist_cap=2 regardless of which global cluster these items fall into."""
     content_matrix = load_core_content_matrix()
     meta = _load_item_metadata()
     counts = meta["artist"].value_counts()
@@ -120,13 +122,12 @@ def test_artist_cap_violation_incurs_penalty():
     item_idxs = meta.index[meta["artist"] == artist][:3].tolist()
 
     candidates = pd.DataFrame({"item_idx": item_idxs, "hybrid_score": [3.0, 2.0, 1.0]})
-    config = EnvConfig(n_arms=1, playlist_length=3, artist_cap=2, reward_mode=GROUNDED, seed=42)
+    config = EnvConfig(playlist_length=3, artist_cap=2, reward_mode=GROUNDED, seed=42)
     env = PlaylistEnv(user_idx=0, candidates=candidates, content_matrix=content_matrix, holdout={}, config=config)
 
     decompositions = []
-    done = False
-    while not done:
-        _, reward, done, info = env.step(0)
+    for pos in range(3):
+        _, reward, done, info = env.step_song(pos)
         decompositions.append(info)
 
     assert len(env.playlist) == 3
@@ -150,3 +151,25 @@ def test_no_duplicate_tracks(content_matrix, candidates_df, holdout_df):
         env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig(seed=42))
         _, playlist = _run_random_episode(env, rng)
         assert len(playlist) == len(set(playlist)), f"duplicate track for user {user_idx}: {playlist}"
+
+
+def test_step_song_rejects_reused_position(content_matrix, candidates_df, holdout_df):
+    """step_song (Phase 6's LinUCB song-level control) must hard-reject an
+    already-used position rather than silently substituting another one."""
+    user_idx = int(_sample_user(candidates_df, holdout_df, seed=4)[0])
+    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(seed=42))
+    unused = env.unused_positions()
+    pos = int(unused[0])
+    env.step_song(pos)
+    assert pos not in env.unused_positions()
+    with pytest.raises(ValueError):
+        env.step_song(pos)
+
+
+def test_song_contexts_shape(content_matrix, candidates_df, holdout_df):
+    user_idx = int(_sample_user(candidates_df, holdout_df, seed=5)[0])
+    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(seed=42))
+    contexts = env.song_contexts()
+    expected_dim = env.user_profile.shape[1] + content_matrix.shape[1] + 5  # profile + content + state features
+    assert contexts.shape == (len(env.candidate_items), expected_dim)
+    assert np.isfinite(contexts).all()

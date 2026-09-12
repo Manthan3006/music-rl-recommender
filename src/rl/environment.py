@@ -2,11 +2,21 @@
 
 `PlaylistEnv` builds one episode's playlist for a single user out of that
 user's Phase 4 candidate pool. It implements the two-level action space from
-B.7: the agent picks an **arm** (a KMeans cluster over the candidate pool's
-content vectors, |A|=N_ARMS), and the environment deterministically resolves
-that arm to the highest-hybrid-score unused candidate in it (B.7 level 2).
-Reward is B.12's grounded (Tier 1) or grounded+simulated (Tier 1 + Tier 2)
-formula, selected via `EnvConfig.reward_mode`.
+B.7: the agent picks an **arm** (one of N_ARMS=10 *fixed, global* content
+clusters — see fit_global_clusters.py; every item_idx has one persistent
+cluster label used by every user and every episode, not a per-episode
+refit), and the environment deterministically resolves that arm to the
+highest-hybrid-score unused candidate in it (B.7 level 2). Reward is B.12's
+grounded (Tier 1) or grounded+simulated (Tier 1 + Tier 2) formula, selected
+via `EnvConfig.reward_mode`.
+
+Global (not per-candidate-set) clusters are required for Phase 6: arm
+identity has to mean the same thing across all 20,000 training episodes for
+EpsilonGreedyMAB/UCB1's arm-value estimates and the Q-table to accumulate
+anything coherent across episodes — a value learned for "arm 3" from one
+user's episode must transfer to the next user's episode, which per-episode
+KMeans refitting (arbitrary, independently-assigned labels each time) cannot
+give you.
 
 Only the no-duplicate constraint is a hard filter on candidate selection — a
 playlist containing the same track twice is a bug, not a trade-off. The
@@ -38,7 +48,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from sklearn.cluster import KMeans
 
 from config import ARTIST_CAP, DATA_PROCESSED, N_ARMS, PLAYLIST_LENGTH, SEED, SIMULATED_REL_LAMBDA, W_DIV, W_DUP, W_REL, W_REP
 from src.recommenders.common import load_idx_maps
@@ -85,6 +94,20 @@ def _bucket(value: float, edges: np.ndarray) -> int:
     return int(np.searchsorted(edges, value, side="right"))
 
 
+_GLOBAL_CLUSTERS = None
+
+
+def _load_global_clusters() -> np.ndarray:
+    """item_idx -> fixed global cluster label (0..N_ARMS-1), see
+    fit_global_clusters.py. Computed once and persisted to disk; every
+    PlaylistEnv shares this same lookup instead of fitting its own KMeans."""
+    global _GLOBAL_CLUSTERS
+    if _GLOBAL_CLUSTERS is None:
+        from src.rl.fit_global_clusters import load as load_global_clusters
+        _GLOBAL_CLUSTERS = load_global_clusters()
+    return _GLOBAL_CLUSTERS
+
+
 @dataclass
 class EnvConfig:
     playlist_length: int = PLAYLIST_LENGTH
@@ -128,19 +151,15 @@ class PlaylistEnv:
         self.candidate_scores = cand["hybrid_score"].to_numpy()
         self.candidate_artists = meta["artist"].to_numpy()[self.candidate_items]
 
-        n_clusters = min(self.config.n_arms, len(self.candidate_items))
-        vectors = content_matrix[self.candidate_items].toarray()
-        km = KMeans(n_clusters=n_clusters, random_state=self.config.seed, n_init=10)
-        self.cluster_of = km.fit_predict(vectors)
+        self.cluster_of = _load_global_clusters()[self.candidate_items]
         # per-arm candidate positions, pre-sorted by hybrid_score descending
         # (candidate_items is already sorted, so this preserves that order)
         self.arms = {k: [i for i in range(len(self.candidate_items)) if self.cluster_of[i] == k]
                      for k in range(self.config.n_arms)}
 
-        if self.config.reward_mode == GROUNDED_SIMULATED:
-            self.user_profile = _load_user_profiles()[user_idx]
-        else:
-            self.user_profile = None
+        # Always loaded (not just for GROUNDED_SIMULATED): LinUCB's song-level
+        # context (B.7) includes the user profile regardless of reward mode.
+        self.user_profile = _load_user_profiles()[user_idx]
 
         self.reward_log = []
         self.reset()
@@ -215,13 +234,8 @@ class PlaylistEnv:
             return self.config.lambda_sim * cos
         return 0.0
 
-    def step(self, arm_k: int):
+    def _apply_action(self, pos: int, arm_k: int):
         cfg = self.config
-        pos = self._select_candidate(arm_k)
-        if pos is None:
-            info = {"pool_exhausted": True}
-            return self._state(), 0.0, True, info
-
         item_idx = int(self.candidate_items[pos])
         artist = self.candidate_artists[pos]
 
@@ -255,6 +269,68 @@ class PlaylistEnv:
 
         done = len(self.playlist) >= cfg.playlist_length
         return self._state(), reward, done, decomposition
+
+    def step(self, arm_k: int):
+        """Level-1 (tabular/bandit) action: pick an arm, environment resolves
+        it to a specific candidate (B.7 level 2)."""
+        pos = self._select_candidate(arm_k)
+        if pos is None:
+            return self._state(), 0.0, True, {"pool_exhausted": True}
+        return self._apply_action(pos, arm_k)
+
+    def step_song(self, position: int):
+        """Song-level action (B.7's LinUCB): directly select a specific
+        candidate position, bypassing arm-cluster resolution entirely.
+        `position` must be unused this episode — see unused_positions();
+        the no-duplicate constraint is still a hard filter, it is just
+        enforced by the caller not offering a used position rather than by
+        this method silently substituting another one (an agent choosing
+        among only the unused positions is the whole point of song-level
+        control)."""
+        if position in self.used_positions:
+            raise ValueError(f"position {position} already used this episode")
+        return self._apply_action(position, arm_k=int(self.cluster_of[position]))
+
+    def unused_positions(self) -> np.ndarray:
+        return np.fromiter(
+            (p for p in range(len(self.candidate_items)) if p not in self.used_positions), dtype=int)
+
+    def _playlist_state_features(self) -> np.ndarray:
+        """Small continuous feature vector summarising the playlist so far,
+        for LinUCB's song-level context (B.7) — richer than the discretised
+        tabular _state() buckets, appropriate since LinUCB handles
+        high-dimensional continuous context directly."""
+        recent = self.playlist[-3:]
+        if recent:
+            meta = _load_item_metadata()
+            energy = float(meta["energy"].to_numpy()[recent].mean())
+            valence = float(meta["valence"].to_numpy()[recent].mean())
+        else:
+            energy, valence = 0.5, 0.5
+
+        if len(self.playlist) >= 2:
+            vecs = self.content_matrix[self.playlist].toarray()
+            sims = vecs @ vecs.T
+            iu = np.triu_indices(len(self.playlist), k=1)
+            diversity_so_far = float(1.0 - sims[iu].mean())
+        else:
+            diversity_so_far = 1.0
+
+        near_cap = 1.0 if self.artist_counts and max(self.artist_counts.values()) >= self.config.artist_cap else 0.0
+        position_frac = len(self.playlist) / self.config.playlist_length
+
+        return np.array([position_frac, energy, valence, diversity_so_far, near_cap])
+
+    def song_contexts(self) -> np.ndarray:
+        """(n_candidates, d) LinUCB context matrix, one row per candidate
+        position: user_profile ⊕ content_vec(a) ⊕ playlist_state_features
+        (B.7). Includes used positions too — mask with unused_positions()."""
+        profile = self.user_profile.toarray().ravel()
+        content_vecs = self.content_matrix[self.candidate_items].toarray()
+        n = len(self.candidate_items)
+        profile_block = np.tile(profile, (n, 1))
+        state_block = np.tile(self._playlist_state_features(), (n, 1))
+        return np.hstack([profile_block, content_vecs, state_block])
 
 
 def make_env_for_user(user_idx: int, candidates_df: pd.DataFrame, content_matrix, holdout_by_user_aff: dict,

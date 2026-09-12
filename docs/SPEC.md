@@ -258,9 +258,12 @@ every user and every step — a tabular Q-table over that is meaningless, becaus
 **Fix — two-level policy:**
 
 - **Level 1 (RL, tabular):** the agent picks an **arm**, not a song. Cluster the
-  candidate set into K = 8–12 buckets (KMeans on the normalised audio-feature +
-  tag vector, refit per candidate set, or use fixed global clusters). The action
-  is "draw the next track from bucket k". |A| = K.
+  full catalogue into K = 8–12 buckets (KMeans on the normalised audio-feature +
+  tag vector) **once, globally** — not refit per candidate set, so arm
+  identity is stable across every user and episode (required for
+  EpsilonGreedyMAB/UCB1/Q-table learning to accumulate anything across
+  episodes; see Phase 5/6). The action is "draw the next track from bucket
+  k". |A| = K = 10.
 - **Level 2 (deterministic):** within the chosen bucket, take the
   highest-hybrid-score track not yet used. The artist cap is enforced as a
   reward penalty (B.12's `w_rep` term), not as a selection filter here — see
@@ -824,8 +827,19 @@ exists to make tractable. An NDCG bar on the pool itself was the wrong gate.
    tabular RL over a stateless contextual bandit (which just maximises
    immediate reward and would behave identically under a hard cap) weakens
    to nothing. The penalty must be a cost the agent can choose to pay.
-4. Cluster the candidate set into K=10 arms with KMeans on `content_matrix`
-   rows, seeded.
+4. Cluster into K=10 arms with KMeans on `content_matrix` rows, seeded, using
+   **fixed global clusters** (one KMeans fit over the whole core catalogue,
+   `src/rl/fit_global_clusters.py`, persisted to
+   `models/global_song_clusters.npy`) rather than refitting per user's
+   candidate pool. Phase 5 was first built with per-candidate-set refit,
+   which B.7 also allows — it had to be revised once Phase 6 made the
+   requirement concrete: EpsilonGreedyMAB, UCB1, and the Q-table's
+   convergence over 20,000 episodes (Phase 6) all require arm identity to
+   carry the same content meaning across every episode, so a value learned
+   for "arm 3" on one user's episode transfers to the next user's. Per-
+   episode KMeans refitting can't give you that — its cluster labels are
+   arbitrary and independently assigned each time, so "cluster 3" means
+   nothing consistent across users.
 5. Expose both a **grounded-only** reward mode (Tier 1) and a
    **grounded+simulated** mode (Tier 1 + Tier 2) via a config flag. Run both;
    report both.
