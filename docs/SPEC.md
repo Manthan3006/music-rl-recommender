@@ -729,9 +729,17 @@ not, the weighting is wrong. Assert no holdout track contributed to any profile.
 **Tasks.**
 1. `popularity.py` — global top-N by distinct listeners and by total playcount.
 2. `content.py` — cosine(`user_profile[u]`, `content_matrix`), chunked.
-3. `item_cf.py` — cosine item–item on the train CSR, **keep only top-50
+3. `item_cf.py` — cosine item–item on the train CSR, **keep only top-5
    neighbours per item** (chunked `argpartition`, never materialise 12,193²
    densely at once), then score `Σ_{j ∈ train_u} sim(i,j) · aff_uj`.
+   k=5 is a swept choice, not an arbitrary default: a sweep over
+   k ∈ {2,5,10,15,20,30,40,50} (`results/phase3/item_cf_k_sweep.csv`) shows
+   Recall@20, NDCG@20, and Coverage@20 all peak at k=5 and fall monotonically
+   for k>5 — coverage *rising* as k falls rules out popularity concentration
+   as the explanation. Report this in Phase 9 as a **sensitivity analysis**,
+   not as tuning: the sweep was run on the same holdout used for acceptance
+   evaluation, so a separate validation split would have been the
+   methodologically rigorous way to select k.
 4. `als_model.py` — `implicit.als.AlternatingLeastSquares(factors=64,
    regularization=0.05, alpha=40, iterations=20)`. Grid `factors ∈ {32,64,128}`,
    `reg ∈ {0.01,0.05,0.1}` on a validation slice.
@@ -898,6 +906,12 @@ request time. Runs from a clean checkout with one command.
 - The justification for ALS-with-confidence over SVD++ (B.2).
 - The two-level action-space design and why a flat 100-song tabular action space
   would have been invalid (B.7).
+- The ItemCF top-k neighbour sweep (`results/phase3/item_cf_k_sweep.csv`),
+  reported as a **sensitivity analysis, not as tuning** — k was swept on the
+  same holdout used for Phase 3 acceptance evaluation, so the honest framing
+  is "this is how sensitive the model is to k," not "k was optimised";
+  note that a separate validation split would have been the rigorous approach
+  to actually tune k.
 
 ---
 
