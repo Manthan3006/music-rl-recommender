@@ -1,0 +1,7 @@
+{
+  "eval_users": 5000,
+  "overlap_with_rl_curriculum": 0,
+  "users_with_train_holdout_overlap": 0,
+  "profiles_checked": 200,
+  "profiles_train_only": 200
+}

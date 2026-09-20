@@ -911,7 +911,8 @@ with `UCB1`.)
    holdout hits. "Final performance" is the last 500 episodes.
    **Grounded (Tier 1 only) is the PRIMARY experiment and the only one run
    in Phase 6.** The grounded+simulated (Tier 1+2, B.12) run is a SECONDARY
-   experiment, **deferred to a single-seed run after Phase 7**, whose purpose
+   experiment, **deferred to a single-seed run after Phase 7** (run as
+   Phase 7's reward ablation: `results/phase7/ablation_reward.csv`), whose purpose
    is to document reward hacking: in the first (superseded) run LinUCB earned
    the highest simulated-reward with a third of Random's holdout hit rate,
    because the simulated content-similarity term can be raised without
@@ -983,6 +984,40 @@ is complete.)*
 
 **Acceptance.** No RMSE or MAE anywhere in the results. Every number has a
 standard deviation. Every claim in the report traces to a row in the CSV.
+
+**As built (interpretation calls, recorded so the report can state them).**
+- *"5 seeds" = 5 disjoint evaluation folds.* The non-RL models are
+  deterministic given the trained artefacts, so there is nothing to reseed;
+  the variability that matters is which users are scored. 5,000 users are
+  drawn (SEED) from those **not in the Phase 6 training curriculum** and split
+  into 5 folds of 1,000; every configuration is scored once per fold and
+  reported as mean ± std across folds (`src/evaluation/eval_users.py`).
+  Random uses one seed per fold. For RL rows each fold value is the mean over
+  the 3 trained checkpoints (Phase 6's 3 seeds); the across-checkpoint spread
+  is in `results/phase7/rl_by_train_seed.csv`. This is below Part C's
+  ≥5-trained-seed guideline for the RL rows, exactly as in Phase 6.
+- *Playlist length.* RL playlists are generated with `playlist_length = K`
+  (10 and 20), exploration disabled, so position buckets keep their meaning;
+  agents were trained at length 15, so K≠15 is a mild distribution shift.
+- *Greedy ≡ Hybrid.* The Greedy agent's playlist equals the Hybrid pool's
+  top-K for 5,000/5,000 users at both K (`results/phase7/greedy_equals_hybrid.csv`),
+  so "Hybrid" is reported once. Three rows beyond the 8 listed are included:
+  Hybrid+RandomArm (the Phase 6 control, distinct from catalogue-level
+  `Random`), Hybrid+UCB1 and Hybrid+SARSA.
+- *Leakage assertions* (raise on failure; all passed): eval users disjoint
+  from the RL curriculum; no user's held-out track in their train row; no
+  recommended item in the user's train set; stored user profiles reproducible
+  from train rows only, with a power check that they would change if holdout
+  rows were included (`results/phase7/leakage_checks.json`).
+- *Ablations* (`results/phase7/ablation_genre.csv`, `ablation_reward.csv`): the
+  genre block (0.10 one-hot + UNK) is tested on the Content and Hybrid layers
+  only — agents are not retrained. The grounded+simulated run is the
+  single-seed secondary experiment deferred from Phase 6.
+- The Hybrid does not beat ItemCF overall: ItemCF wins every metric at K=10
+  and the rank-sensitive ones (NDCG, MAP) at K=20; the Hybrid is ahead only on
+  the count-based K=20 metrics (Precision/Recall/F1/HitRate@20, e.g. Recall@20
+  0.3976 vs 0.3909 — a gap of about one across-fold std). Consistent with the
+  Phase 4 finding.
 
 **Dependencies.** Phase 6.
 

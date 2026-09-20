@@ -56,6 +56,9 @@ from src.rl.environment import GROUNDED, GROUNDED_SIMULATED, EnvConfig, Playlist
 
 N_EPISODES = 5_000
 SEEDS = [42, 43, 44]
+# The secondary grounded+simulated run is single-seed by design (docs/SPEC.md
+# Phase 6): its purpose is to document reward hacking, not to rank agents.
+SEEDS_BY_MODE = {GROUNDED: SEEDS, GROUNDED_SIMULATED: [42]}
 ALL_MODES = [GROUNDED, GROUNDED_SIMULATED]
 REWARD_MODES = [GROUNDED]  # default run; grounded_simulated is deferred (see docstring)
 LINUCB_ALPHA = 1.0  # fixed, not tuned
@@ -195,7 +198,7 @@ def run_mode(reward_mode, content_matrix, candidates_by_user, holdout_by_user, u
     curve_frames = []
     ucb1_arm_rows = []
     for agent_name, factory in agent_factories.items():
-        for seed in SEEDS:
+        for seed in SEEDS_BY_MODE[reward_mode]:
             log(f"[{reward_mode}] Training {agent_name} (seed={seed}) for {N_EPISODES:,} episodes ...")
             t0 = time.time()
             agent, rewards, hits, holdout_sizes = train_agent(

@@ -1,0 +1,5 @@
+trained_with,reward,spearman_rho_vs_precision_at_15,n_agents
+grounded,sim_reward,0.7714285714285715,6
+grounded,grounded_reward,-0.3714285714285715,6
+grounded_simulated,sim_reward,-0.6571428571428573,6
+grounded_simulated,grounded_reward,0.48571428571428577,6
