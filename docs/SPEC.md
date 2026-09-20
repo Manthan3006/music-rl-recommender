@@ -1042,6 +1042,20 @@ optional experiment, Part F, once the core UI works.)*
 **Acceptance.** Cold start < 10 s, per-playlist < 3 s. No model training at
 request time. Runs from a clean checkout with one command.
 
+**As built.** `app.py` (UI) over `src/playlist.py` (`PlaylistService`,
+inference only, tested without Streamlit in `tests/test_playlist.py`, which also
+drives the app headless with `streamlit.testing`). Run with
+`streamlit run app.py`; it needs the pipeline artefacts (`data/processed/`,
+`models/`) already on disk. Measured: cold first render 2.6 s (fresh process,
+imports included), warm playlist 0.06–0.10 s. Agents are the Phase 6 grounded
+checkpoints, training seed 42, exploration disabled exactly as in the table of
+record, and are deep-copied per request. The environment is given
+`holdout={}` when serving, so no agent can see a held-out track; an opt-in
+"reveal held-out tracks" checkbox marks which of the 5 hidden tracks a
+playlist recovered. Users are identified by index (`user 01234`) because the
+raw ids are SHA-1 hashes. Tracks carry `st.audio` previews only where
+`spotify_preview_url` is present; the stored URLs may no longer resolve.
+
 **Dependencies.** Phase 7.
 
 ---
