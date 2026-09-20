@@ -319,8 +319,10 @@ heavily-skewed variable produces a similarity space dominated by outliers.
 
 ### B.11 Playcount → preference conversion
 
-Do **not** min-max scale playcount into a pseudo-rating. Raw skew is 46.31; after
-`log1p` it drops to 2.11.
+Do **not** min-max scale playcount into a pseudo-rating. Raw skew is 58.34 (Phase 0's
+reproduction; the 46.31 originally quoted here could not be reproduced under any
+estimator or aggregation tried, see report/FINDINGS.md); after `log1p` it drops
+to 2.06.
 
 Use the Hu–Koren–Volinsky split into *preference* and *confidence*:
 
@@ -422,7 +424,8 @@ experiment (Part F) once RRF is validated as the core hybrid, not in the first
 implementation.
 
 Expected outcome to check: popularity weight should come out small. The top 10%
-of tracks already hold 47.0% of interactions, so a popularity-heavy hybrid will
+of tracks already hold 46.8% of interactions on the filtered core (Phase 9 recheck; 47.0% as originally
+quoted, 66.4% on the raw catalogue), so a popularity-heavy hybrid will
 score well on Precision@K and terribly on novelty and coverage. That tension is a
 finding, not a bug — put it in the report.
 
