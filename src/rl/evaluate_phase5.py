@@ -57,7 +57,7 @@ def run_episode(content_matrix, candidates_df, holdout_df, user_idx, reward_mode
     rows = holdout_df[holdout_df["user_idx"] == user_idx]
     holdout = dict(zip(rows["item_idx"], rows["aff_ui"]))
 
-    config = EnvConfig(reward_mode=reward_mode, seed=seed)
+    config = EnvConfig(reward_mode=reward_mode)
     env = PlaylistEnv(int(user_idx), cand, content_matrix, holdout, config)
 
     rng = np.random.default_rng(seed)

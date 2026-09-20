@@ -1,0 +1,4 @@
+,Greedy,Random
+mean_distinct_arms_per_episode,5.541,7.983
+mean_div,0.5256119860813704,0.6266484122715256
+mean_repeat_rate,0.2975333333333333,0.145

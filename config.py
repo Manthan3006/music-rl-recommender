@@ -34,7 +34,11 @@ AUDIO_FEATURE_WEIGHT = 0.45
 TAG_FEATURE_WEIGHT = 0.55
 
 # Reward weights (Part B.12)
-W_REL = 1.0
+# W_REL raised 1.0 -> 3.0 (Phase 6 diagnosis): with mean_rel ~0.13 and
+# mean_div ~0.6 under W_REL=1.0/W_DIV=0.3, the diversity term contributed
+# roughly as much total reward as relevance despite relevance being the
+# actual objective — 3.0 restores relevance as the dominant term.
+W_REL = 3.0
 W_DIV = 0.3
 W_REP = 0.5
 W_DUP = 1.0

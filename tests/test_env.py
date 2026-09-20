@@ -75,12 +75,16 @@ def _run_random_episode(env, rng):
 
 @pytest.mark.parametrize("reward_mode", [GROUNDED, GROUNDED_SIMULATED])
 def test_reward_deterministic_given_seed(content_matrix, candidates_df, holdout_df, reward_mode):
+    """PlaylistEnv has no internal randomness (clusters are a fixed global
+    lookup, not fit per episode — see environment.py's EnvConfig docstring),
+    so determinism given (user, action sequence) holds unconditionally; this
+    still exercises the Phase 5 acceptance criterion as originally stated."""
     user_idx = int(_sample_user(candidates_df, holdout_df, seed=1)[0])
     action_sequence = [0, 3, 7, 2, 5, 1, 9, 4, 6, 8, 0, 2, 5, 7, 1]
 
-    config = EnvConfig(reward_mode=reward_mode, seed=42)
+    config = EnvConfig(reward_mode=reward_mode)
     env_a = _make_env(content_matrix, candidates_df, holdout_df, user_idx, config)
-    env_b = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(reward_mode=reward_mode, seed=42))
+    env_b = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(reward_mode=reward_mode))
 
     rewards_a, playlist_a = [], []
     for arm in action_sequence:
@@ -122,7 +126,7 @@ def test_artist_cap_violation_incurs_penalty():
     item_idxs = meta.index[meta["artist"] == artist][:3].tolist()
 
     candidates = pd.DataFrame({"item_idx": item_idxs, "hybrid_score": [3.0, 2.0, 1.0]})
-    config = EnvConfig(playlist_length=3, artist_cap=2, reward_mode=GROUNDED, seed=42)
+    config = EnvConfig(playlist_length=3, artist_cap=2, reward_mode=GROUNDED)
     env = PlaylistEnv(user_idx=0, candidates=candidates, content_matrix=content_matrix, holdout={}, config=config)
 
     decompositions = []
@@ -148,7 +152,7 @@ def test_no_duplicate_tracks(content_matrix, candidates_df, holdout_df):
     users = _sample_user(candidates_df, holdout_df, n=20, seed=3)
     rng = np.random.default_rng(456)
     for user_idx in users:
-        env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig(seed=42))
+        env = _make_env(content_matrix, candidates_df, holdout_df, int(user_idx), EnvConfig())
         _, playlist = _run_random_episode(env, rng)
         assert len(playlist) == len(set(playlist)), f"duplicate track for user {user_idx}: {playlist}"
 
@@ -157,7 +161,7 @@ def test_step_song_rejects_reused_position(content_matrix, candidates_df, holdou
     """step_song (Phase 6's LinUCB song-level control) must hard-reject an
     already-used position rather than silently substituting another one."""
     user_idx = int(_sample_user(candidates_df, holdout_df, seed=4)[0])
-    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(seed=42))
+    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig())
     unused = env.unused_positions()
     pos = int(unused[0])
     env.step_song(pos)
@@ -168,7 +172,7 @@ def test_step_song_rejects_reused_position(content_matrix, candidates_df, holdou
 
 def test_song_contexts_shape(content_matrix, candidates_df, holdout_df):
     user_idx = int(_sample_user(candidates_df, holdout_df, seed=5)[0])
-    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig(seed=42))
+    env = _make_env(content_matrix, candidates_df, holdout_df, user_idx, EnvConfig())
     contexts = env.song_contexts()
     expected_dim = env.user_profile.shape[1] + content_matrix.shape[1] + 5  # profile + content + state features
     assert contexts.shape == (len(env.candidate_items), expected_dim)

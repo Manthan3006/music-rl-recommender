@@ -49,7 +49,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from config import ARTIST_CAP, DATA_PROCESSED, N_ARMS, PLAYLIST_LENGTH, SEED, SIMULATED_REL_LAMBDA, W_DIV, W_DUP, W_REL, W_REP
+from config import ARTIST_CAP, DATA_PROCESSED, N_ARMS, PLAYLIST_LENGTH, SIMULATED_REL_LAMBDA, W_DIV, W_DUP, W_REL, W_REP
 from src.recommenders.common import load_idx_maps
 
 GROUNDED = "grounded"
@@ -110,16 +110,19 @@ def _load_global_clusters() -> np.ndarray:
 
 @dataclass
 class EnvConfig:
+    """PlaylistEnv itself is fully deterministic given (candidates, holdout,
+    config) — clusters are a fixed global lookup (fit_global_clusters.py),
+    not fit per episode, so there is no seed here. All randomness in a
+    training run lives in the agent (src/rl/agents.py)."""
     playlist_length: int = PLAYLIST_LENGTH
     artist_cap: int = ARTIST_CAP
     n_arms: int = N_ARMS
-    reward_mode: str = GROUNDED_SIMULATED
+    reward_mode: str = GROUNDED
     lambda_sim: float = SIMULATED_REL_LAMBDA
     w_rel: float = W_REL
     w_div: float = W_DIV
     w_rep: float = W_REP
     w_dup: float = W_DUP
-    seed: int = SEED
 
 
 class PlaylistEnv:
